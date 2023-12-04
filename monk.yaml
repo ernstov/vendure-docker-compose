@@ -1,0 +1,186 @@
+namespace: vendure-docker-compose
+
+postgres-database:
+  defines: runnable
+  inherits: postgresql/db
+  metadata:
+    name: postgres-database
+    description: The PostgreSQL database used for data persistence in the Vendure platform.
+    icon: https://www.postgresql.org/media/img/about/press/elephant.png
+  variables:
+    db_name:
+      type: string
+      value: monk
+      description: ''
+    db_pass:
+      type: string
+      value: adminpassword
+      description: ''
+    db_user:
+      type: string
+      value: monk
+      description: ''
+
+vendure-server:
+  defines: runnable
+  metadata:
+    name: vendure-server
+    description: The main Vendure server service for the e-commerce platform.
+    icon: https://emojiapi.dev/api/v1/robot.svg
+  containers:
+    vendure-server:
+      image: env-3304.registry.local/vendure-server:master-79cae2d
+      build: .
+      dockerfile: Dockerfile
+  services:
+    http-server-port:
+      description: HTTP server listening port for the Vendure server.
+      container: vendure-server
+      port: 3000
+      host-port: 3000
+      publish: true
+      protocol: tcp
+  connections:
+    database-connection:
+      target: vendure-docker-compose/postgres-database
+      service: postgres
+      optional: true
+      description: Connection to the PostgreSQL database used for data persistence.
+    worker-connection:
+      target: vendure-docker-compose/vendure-worker
+      service: '!!!SETME!!!'
+      optional: true
+      description: Connection to the Vendure worker service for background jobs.
+  variables:
+    database-host:
+      env: DATABASE_HOST
+      type: string
+      value: <- connection-hostname("database-connection")
+      description: The hostname of the database server.
+    database-port:
+      env: DATABASE_PORT
+      type: int
+      value: <- connection-port("database-connection")
+      description: The port number on which the database server is running.
+    cookie-secret:
+      env: COOKIE_SECRET
+      type: string
+      value: 3r8wq8jdo92
+      description: The secret used for signing cookies.
+    postgres-user:
+      env: POSTGRES_USER
+      type: string
+      value: monk
+      description: The username for the PostgreSQL database.
+    postgres-password:
+      env: POSTGRES_PASSWORD
+      type: string
+      value: adminpassword
+      description: The password for the PostgreSQL database.
+
+vendure-worker:
+  defines: runnable
+  metadata:
+    name: vendure-worker
+    description: The worker service for background jobs in the Vendure platform.
+    icon: https://emojiapi.dev/api/v1/robot.svg
+  containers:
+    vendure-worker:
+      image: env-3304.registry.local/vendure-worker:master-79cae2d
+      build: .
+      dockerfile: Dockerfile
+  services: {}
+  connections:
+    database-connection:
+      target: vendure-docker-compose/postgres-database
+      service: postgres
+      optional: true
+      description: Connection to the PostgreSQL database for data persistence.
+  variables:
+    cookie-secret:
+      env: COOKIE_SECRET
+      type: string
+      value: 3r8wq8jdo92
+      description: Secret used for cookie options.
+    database-host:
+      env: DATABASE_HOST
+      type: string
+      value: <- connection-hostname("database-connection")
+      description: Hostname for the database.
+    database-port:
+      env: DATABASE_PORT
+      type: int
+      value: <- connection-port("database-connection")
+      description: Port for the database connection.
+    postgres-user:
+      env: POSTGRES_USER
+      type: string
+      value: monk
+      description: Username for the PostgreSQL database.
+    postgres-password:
+      env: POSTGRES_PASSWORD
+      type: string
+      value: adminpassword
+      description: Password for the PostgreSQL database.
+
+storefront:
+  defines: runnable
+  metadata:
+    name: storefront
+    description: The example storefront service for the Vendure e-commerce platform.
+    icon: https://emojiapi.dev/api/v1/robot.svg
+  containers:
+    storefront:
+      image: env-3304.registry.local/storefront:master-79cae2d
+      build: .
+      dockerfile: Dockerfile-storefront
+  services:
+    storefront-http:
+      description: HTTP port for the storefront service.
+      container: storefront
+      port: 3000
+      host-port: 3000
+      publish: true
+      protocol: tcp
+  connections:
+    storefront-to-vendure-server:
+      target: vendure-docker-compose/vendure-server
+      service: http-server-port
+      optional: true
+      description: >-
+        The storefront service connects to the Vendure server to access the
+        e-commerce platform's backend.
+  variables:
+    cookie-secret:
+      env: COOKIE_SECRET
+      type: string
+      value: 3r8wq8jdo92
+      description: Secret key for signing cookies.
+    database-host:
+      env: DATABASE_HOST
+      type: string
+      value: localhost
+      description: Hostname of the database server.
+    database-port:
+      env: DATABASE_PORT
+      type: int
+      value: 5432
+      description: Port number of the database server.
+    postgres-user:
+      env: POSTGRES_USER
+      type: string
+      value: postgres
+      description: Username for the PostgreSQL database.
+    postgres-password:
+      env: POSTGRES_PASSWORD
+      type: string
+      value: password
+      description: Password for the PostgreSQL database.
+
+stack:
+  defines: group
+  members:
+    - vendure-docker-compose/postgres-database
+    - vendure-docker-compose/vendure-server
+    - vendure-docker-compose/vendure-worker
+    - vendure-docker-compose/storefront
