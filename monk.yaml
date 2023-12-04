@@ -138,8 +138,8 @@ storefront:
     storefront-http:
       description: HTTP port for the storefront service.
       container: storefront
-      port: 3000
-      host-port: 3000
+      port: 4000
+      host-port: 4000
       publish: true
       protocol: tcp
   connections:
